@@ -34,6 +34,12 @@ function displayTable(csvData) {
     
     // Create header row
     const headerRow = document.createElement('tr');
+
+    const spacer = document.createElement('th');
+    spacer.style.border = 'none'; // No visible border
+    spacer.textContent = ''; // Empty cell
+    headerRow.appendChild(spacer);
+
     headers.forEach(header => {
         const th = document.createElement('th');
         th.textContent = header;
@@ -44,6 +50,12 @@ function displayTable(csvData) {
     // Create data rows
     rows.forEach(row => {
         const tr = document.createElement('tr');
+        // Add an empty leading cell to line up with the header spacer
+        const leading = document.createElement('td');
+        leading.style.border = 'none';
+        leading.textContent = '';
+        tr.appendChild(leading);
+
         headers.forEach(header => {
             const td = document.createElement('td');
             td.textContent = row[header];
@@ -54,6 +66,61 @@ function displayTable(csvData) {
     
     // Show table container
     tableContainer.classList.add('show');
+    // Populate extension rows (checkboxes + comments) to match headers
+    populateExtensionRows(headers);
+}
+
+function populateExtensionRows(headers) {
+    const extContainer = document.getElementById('extensionContainer');
+    const extRowCheckboxes = document.getElementById('extensionRowCheckboxes');
+    const extRowComments = document.getElementById('extensionRowComments');
+
+    if (!extContainer || !extRowCheckboxes || !extRowComments) return;
+
+    // Clear any existing cells
+    extRowCheckboxes.innerHTML = '';
+    extRowComments.innerHTML = '';
+
+    // First cell: left label for each extension row
+    const labelCbCell = extRowCheckboxes.insertCell(-1);
+    labelCbCell.className = 'extension-label';
+    labelCbCell.textContent = 'I want to manually grade this';
+    const labelCommentCell = extRowComments.insertCell(-1);
+    labelCommentCell.className = 'extension-label';
+    labelCommentCell.textContent = 'Comments for UnsureTA';
+
+    // For each CSV header, add a checkbox cell and a comment input cell
+    headers.forEach((header, idx) => {
+        // Checkbox cell
+        const cbCell = extRowCheckboxes.insertCell(-1);
+        cbCell.style.padding = '0.5rem';
+        cbCell.style.textAlign = 'center';
+        const cbDiv = document.createElement('div');
+        cbDiv.className = 'extension-checkbox';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'manual-checkbox';
+        checkbox.dataset.colIndex = idx;
+        cbDiv.appendChild(checkbox);
+        cbCell.appendChild(cbDiv);
+
+        // Comment cell
+        const commentCell = extRowComments.insertCell(-1);
+        commentCell.style.padding = '0.5rem';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'extension-comment';
+        input.placeholder = header + ' comment';
+        input.dataset.colIndex = idx;
+        commentCell.appendChild(input);
+    });
+
+    // Unhide the extension container
+    extContainer.style.display = 'block';
+
+    // Also ensure grade button is visible
+    const gradeBtn = document.getElementById('gradeBtn');
+    if (gradeBtn) gradeBtn.style.display = 'inline-block';
 }
 
 function writeRubricToGlobal(csvData) {
@@ -124,6 +191,10 @@ form.addEventListener('submit', (e) => {
 resetBtn.addEventListener('click', () => {
     form.reset();
     tableContainer.classList.remove('show');
+    const ext = document.getElementById('extensionContainer');
+    if (ext) ext.style.display = 'none';
+    const gradeBtn = document.getElementById('gradeBtn');
+    if (gradeBtn) gradeBtn.style.display = 'none';
 });
 
 gradeBtn.addEventListener('click', () => {

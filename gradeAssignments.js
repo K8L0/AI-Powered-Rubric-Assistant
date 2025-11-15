@@ -61,10 +61,12 @@ function createGradePDF(content) {
 
         // Push into the current submission’s confidence scores
         // (one array per submission)
-        if (!window.TAbot.confidenceScores[window.TAbot.confidenceScores.length - 1]) {
+        if (window.TAbot.confidenceScores != null) {
+            if (!window.TAbot.confidenceScores[window.TAbot.confidenceScores.length - 1]) {
             window.TAbot.confidenceScores.push([]);
+            }
+            window.TAbot.confidenceScores[window.TAbot.confidenceScores.length - 1].push(scoreObj);
         }
-        window.TAbot.confidenceScores[window.TAbot.confidenceScores.length - 1].push(scoreObj);
     });
 
     // Build table data: 3 rows (Grade, Feedback, placeholders ignored)
@@ -90,7 +92,19 @@ function createGradePDF(content) {
     return doc;
 }
 
-async function gradeSubmission(textContent) {
+function gradeSubmission(textContent) {
+    // Step 1: create LLM Prompt
+    const className = document.getElementById('className').value.trim();
+    var llmPrompt = createLLMPrompt(className, textContent);
+
+    // Step 2: Call LLM API here with llmPrompt and handle the response
+    var dummyGrade = "Category 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident\nCategory 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident";
+
+
+    // Step 3: create file based on response of LLM API
+    return createGradePDF(dummyGrade);
+}
+async function gradeSubmissionObs(textContent) {
   const className = document.getElementById('className').value.trim();
   const llmPrompt = createLLMPrompt(className, textContent);
 
@@ -121,7 +135,6 @@ async function gradeSubmission(textContent) {
     return null;
   }
 }
-
 
 
 function displayGrades(filesWithGrades) {
@@ -179,15 +192,17 @@ async function gradeAssignments() {
 
         // Iterate through files in the zip
         await Promise.all(Object.keys(zip.files).map(async (relativePath) => {
-            if (relativePath.toLowerCase().endsWith(".txt")) {
+            if ((relativePath.toLowerCase().endsWith(".txt"))&&(relativePath.indexOf("MACOS") === -1)) {
                 try {
                     const content = await zip.files[relativePath].async("string");
 
                     // gradeSubmissions returns a Promise, so await it
                     const gradeResult = await gradeSubmission(content);
+                    
+                    let submissionName = relativePath.substring(relativePath.indexOf('/') + 1);
 
                     filesWithGrades.push({
-                        filename: relativePath,
+                        filename: submissionName,
                         grade: gradeResult   // now this is the resolved value
                     });
                 } catch (err) {

@@ -79,7 +79,26 @@
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
-            <button id="gradeBtn" type="button" style="display:none;">Grade</button>
+            <!-- Extension rows (hidden until CSV parsed) -->
+            <div id="extensionContainer" class="extension-container" style="display:none;">
+                <table id="extensionTable" class="extension-table">
+                    <tbody>
+                        <!-- First row: checkboxes; left label + one cell per CSV column -->
+                        <tr id="extensionRowCheckboxes">
+                            <!-- checkbox cells will be appended here by JS -->
+                        </tr>
+
+                        <!-- Second row: text fields; left label + one cell per CSV column -->
+                        <tr id="extensionRowComments">
+                            <!-- comment cells will be appended here by JS -->
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 0.75rem;">
+                <button id="gradeBtn" type="button" style="display:none;">Grade</button>
+            </div>
         </div>
 
         <div class="right-pane">

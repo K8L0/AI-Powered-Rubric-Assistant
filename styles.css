@@ -104,6 +104,43 @@ table tbody tr:hover {
     background: #f0f0f0;
 }
 
+/* Extension table (checkboxes and comments) */
+.extension-container {
+    margin-top: 0.5rem;
+}
+
+.extension-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+}
+
+.extension-table td {
+    padding: 0.5rem;
+    border: none; /* invisible borders */
+    vertical-align: middle;
+}
+
+.extension-table .extension-label {
+    font-weight: 700;
+    width: 240px; /* fixed label column width */
+    color: #333;
+    padding-right: 1rem;
+}
+
+.extension-checkbox {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.extension-comment {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #e6e6e6;
+    border-radius: 4px;
+}
+
 .container {
     display: flex;
     align-items: flex-start;
