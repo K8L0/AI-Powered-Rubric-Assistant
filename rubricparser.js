@@ -1,6 +1,14 @@
 const submitBtn = document.getElementById('submitBtn');
 const resetBtn = document.getElementById('resetBtn');
 
+const reportBtn = document.getElementById("reportBtn");
+
+reportBtn.addEventListener("click", () => {
+  if (window.generateGradeReportPDF) {
+    window.generateGradeReportPDF();
+  }
+});
+
 function fileExtMatches(file, ext) {
     return file && file.name && file.name.toLowerCase().endsWith(ext);
 }

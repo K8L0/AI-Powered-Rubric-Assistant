@@ -29,59 +29,150 @@ function createGradePDF(content) {
     const headers = [];
     const gradesRow = [];
     const feedbackRow = [];
+    const confidenceRow = [];
 
     lines.forEach(line => {
-        // Example line format:
-        // Category1: (5) good; """Feedback text..."""; ignore; optional
+        if (!line.trim()) return;
+
+        // Expected format:
+        // CategoryName: (5) excellent; """Feedback text..."""; very confident
         const parts = line.split(";").map(p => p.trim());
 
-        // First part contains category and grade
-        const categoryAndGrade = parts[0];
+        const categoryAndGrade = parts[0] || "";
         const feedback = parts[1] ? parts[1].replace(/"""/g, "") : "";
+        const confidenceLabel = parts[2] || "";  // ← keep the confidence text now
 
-        // Extract category name before colon
-        const categoryName = categoryAndGrade.split(":")[0].trim();
-        const grade = categoryAndGrade.split(":")[1]?.trim() || "";
+        const colonIdx = categoryAndGrade.indexOf(":");
+        if (colonIdx === -1) return;
+
+        const categoryName = categoryAndGrade.slice(0, colonIdx).trim();
+        const grade = categoryAndGrade.slice(colonIdx + 1).trim(); // e.g. "(5) excellent"
 
         headers.push(categoryName);
         gradesRow.push(grade);
         feedbackRow.push(feedback);
+        confidenceRow.push(confidenceLabel);
     });
 
     // Build table data: 3 rows (Grade, Feedback, placeholders ignored)
     const body = [
         gradesRow,
-        feedbackRow
+        feedbackRow,
+        confidenceRow
     ];
 
     // Use autoTable for pretty formatting
-    doc.setFontSize(14);
+    doc.setFontSize(16);
     doc.text("Assignment Grades", 14, 20);
 
     doc.autoTable({
-        startY: 30,
+        startY: 28,
         head: [headers],
-        body: body,
-        styles: { halign: 'center', valign: 'middle' },
-        headStyles: { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' },
-        bodyStyles: { fillColor: [240, 240, 240] },
-        alternateRowStyles: { fillColor: [255, 255, 255] }
+        body,
+        styles: {
+            halign: "center",
+            valign: "top",
+            overflow: "linebreak",  // ← wrap instead of clipping
+            cellWidth: "wrap"       // ← allow auto width + wrapping
+        },
+        headStyles: {
+            fillColor: [22, 160, 133],
+            textColor: 255,
+            fontStyle: "bold"
+        },
+        bodyStyles: {
+            fillColor: [240, 240, 240]
+        },
+        alternateRowStyles: {
+            fillColor: [255, 255, 255]
+        }
     });
+
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 28 + 20;
+
+    // Build rubric block from global rubric, if available
+    let rubricBlock = "";
+    if (window.TAbot && window.TAbot.rubric) {
+        rubricBlock += "Rubric for this assignment\n";
+        rubricBlock += window.TAbot.rubric + "\n\n";
+    }
+
+    const confidenceSpectrumBlock =
+        "Confidence Spectrum - possible confidence scores\n" +
+        "Very confident: The submission clearly fits one rubric category. Evidence is strong,\n" +
+        "unambiguous, and easily supported with direct quotes.\n" +
+        "Pretty confident: The submission mostly fits one category, but there are minor inconsistencies or weaker evidence in places.\n" +
+        "Somewhat unsure: The submission could reasonably fit multiple categories. Evidence supports more than one possible grade, making the choice debatable.\n" +
+        "Unsure: The rubric definitions don’t map cleanly to the submission. Deciding requires arbitrary judgment or assumptions beyond the rubric.";
+
+    const fullBlock = rubricBlock + confidenceSpectrumBlock;
+
+    doc.setFontSize(11);
+    const textMarginX = 14;
+    const textMarginY = finalY + 10;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const maxWidth = pageWidth - textMarginX * 2;
+
+    const textLines = doc.splitTextToSize(fullBlock, maxWidth);
+    doc.text(textLines, textMarginX, textMarginY);
+
 
     return doc;
 }
 
-function gradeIndividualAssignment(textContent) {
+function gradeIndividualAssignment(textContent, studentName) {
     // Step 1: create LLM Prompt
     const className = document.getElementById('className').value.trim();
     var llmPrompt = createLLMPrompt(className, textContent);
     
     // Step 2: Call LLM API here with llmPrompt and handle the response
-    var dummyGrade = "Category 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident\nCategory 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident";
+    var dummyGrade =
+      "Analysis: (5) excellent; \"\"\"Strong, precise analysis of the prompt...\"\"\"; very confident\n" +
+      "Evidence: (3) ok; \"\"\"Uses some relevant examples but misses depth...\"\"\"; pretty confident\n" +
+      "Citations: (1) bad; \"\"\"Few or no citations; sources are unclear...\"\"\"; somewhat unsure";
 
+    if (window.registerGradeResult) {
+      window.registerGradeResult(studentName, dummyGrade);
+    }
 
     // Step 3: create file based on response of LLM API
     return createGradePDF(dummyGrade);
+}
+
+function displayStudentInfo(filesWithGrades) {
+    const container = document.getElementById('studentInfoContainer');
+    const table = document.getElementById('studentInfoTable');
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+
+    container.style.display = "block";   // make section visible
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    // Header row
+    const headerRow = document.createElement("tr");
+    ["Submission", "Categories"].forEach(title => {
+        const th = document.createElement("th");
+        th.textContent = title;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+
+    filesWithGrades.forEach(fileObj => {
+        const tr = document.createElement("tr");
+
+        // Column 1 → filename
+        const tdName = document.createElement("td");
+        tdName.textContent = fileObj.filename;
+        tr.appendChild(tdName);
+
+        // Column 2 → rubric categories for this assignment
+        const tdCats = document.createElement("td");
+        tdCats.textContent = (window.TAbot.categories || []).join(", ");
+        tr.appendChild(tdCats);
+
+        tbody.appendChild(tr);
+    });
 }
 
 function displayGrades(filesWithGrades) {
@@ -144,7 +235,7 @@ async function gradeAssignments() {
                     const content = await zip.files[relativePath].async("string");
                     filesWithGrades.push({
                         filename: relativePath,
-                        grade: gradeIndividualAssignment(content) // your grading function
+                        grade: gradeIndividualAssignment(content, relativePath) // your grading function
                     });
                 } catch (err) {
                     console.error("Error reading file:", relativePath, err);
@@ -154,6 +245,7 @@ async function gradeAssignments() {
 
         // Display results
         displayGrades(filesWithGrades);
+        displayStudentInfo(filesWithGrades);
 
     } catch (err) {
         console.error("Error processing ZIP file:", err);
