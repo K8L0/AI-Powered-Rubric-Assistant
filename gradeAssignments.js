@@ -92,21 +92,43 @@ function createGradePDF(content) {
 }
 
 async function gradeSubmission(textContent) {
-    const className = document.getElementById('className').value.trim();
-    const llmPrompt = createLLMPrompt(className, textContent);
+  const className = document.getElementById('className').value.trim();
+  const llmPrompt = createLLMPrompt(className, textContent);
 
-    try {
+  try {
+    // Call Hugging Face Inference API directly
+    const response = await fetch(
+      "https://router.huggingface.co/hf-inference/mistralai/Mistral-7B-Instruct-v0.2",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${HF_ACCESS_TOKEN}`, // must be set in env
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ inputs: llmPrompt }), // Hugging Face expects { inputs: "..." }
+      }
+    );
 
-        const LLMresponse = await callLLM(llmPrompt); // await the Promise
-        const pdfDoc = createGradePDF(LLMresponse);
-        return pdfDoc; // resolves to jsPDF object
-
-    } catch (error) {
-        console.error("Failed (gradeSubmission):", error.message);
-        alert("Error: " + error.message);
-        return null;
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || `HTTP Error: ${response.status}`);
     }
+
+    const data = await response.json();
+
+    // Hugging Face returns an array with generated_text
+    const LLMresponse = data[0]?.generated_text || "";
+
+    // Create PDF from the model output
+    const pdfDoc = createGradePDF(LLMresponse);
+    return pdfDoc;
+  } catch (error) {
+    console.error("Failed (gradeSubmission):", error.message);
+    alert("Error: " + error.message);
+    return null;
+  }
 }
+
 
 function displayGrades(filesWithGrades) {
     const tableBody = document.querySelector("#uploadedFilesTable tbody");
