@@ -1,10 +1,8 @@
-// gradeAssignments.js
-// Requires JSZip (include in your HTML: <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>)
-
 const form = document.getElementById('uploadForm');
 const zipInput = document.getElementById('zipInput');
 
-function createPrompt(className, submissionText) {
+
+function createLLMPrompt(className, submissionText) {
     var rubric = window.TAbot.rubric;
     var categories = getRubricCategories(csvData);
 
@@ -16,17 +14,109 @@ function createPrompt(className, submissionText) {
     return part1 + part2 + part3 + part4;
 }
 
-function gradeAssignment(textContent) {
-    const className = document.getElementById('className').value.trim();
-    var llmPrompt = createPrompt(className, textContent);
-    
-    // Call LLM API here with llmPrompt and handle the response
+function createGradePDF(content) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-    var dummyGrade = "Category 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident";
+    // Split into lines (each line = one rubric category entry)
+    const lines = content.trim().split("\n");
+
+    // Arrays for table headers and rows
+    const headers = [];
+    const gradesRow = [];
+    const feedbackRow = [];
+
+    lines.forEach(line => {
+        // Example line format:
+        // Category1: (5) good; """Feedback text..."""; ignore; optional
+        const parts = line.split(";").map(p => p.trim());
+
+        // First part contains category and grade
+        const categoryAndGrade = parts[0];
+        const feedback = parts[1] ? parts[1].replace(/"""/g, "") : "";
+
+        // Extract category name before colon
+        const categoryName = categoryAndGrade.split(":")[0].trim();
+        const grade = categoryAndGrade.split(":")[1]?.trim() || "";
+
+        headers.push(categoryName);
+        gradesRow.push(grade);
+        feedbackRow.push(feedback);
+    });
+
+    // Build table data: 3 rows (Grade, Feedback, placeholders ignored)
+    const body = [
+        gradesRow,
+        feedbackRow
+    ];
+
+    // Use autoTable for pretty formatting
+    doc.setFontSize(14);
+    doc.text("Assignment Grades", 14, 20);
+
+    doc.autoTable({
+        startY: 30,
+        head: [headers],
+        body: body,
+        styles: { halign: 'center', valign: 'middle' },
+        headStyles: { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' },
+        bodyStyles: { fillColor: [240, 240, 240] },
+        alternateRowStyles: { fillColor: [255, 255, 255] }
+    });
+
+    return doc;
 }
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+function gradeIndividualAssignment(textContent) {
+    // Step 1: create LLM Prompt
+    const className = document.getElementById('className').value.trim();
+    var llmPrompt = createLLMPrompt(className, textContent);
+    
+    // Step 2: Call LLM API here with llmPrompt and handle the response
+    var dummyGrade = "Category 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident\nCategory 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident";
+
+
+    // Step 3: create file based on response of LLM API
+    return createGradePDF(dummyGrade);
+}
+
+function displayGrades(filesWithGrades) {
+    const tableBody = document.querySelector("#uploadedFilesTable tbody");
+    tableBody.innerHTML = ""; // clear any existing rows
+
+    filesWithGrades.forEach(fileObj => {
+        const tr = document.createElement("tr");
+
+        // Filename column
+        const fileTd = document.createElement("td");
+        fileTd.textContent = fileObj.filename;
+        tr.appendChild(fileTd);
+
+        // Grade column
+        const gradeTd = document.createElement("td");
+
+        if (fileObj.grade && typeof fileObj.grade.save === "function") {
+            // If grade is a jsPDF object, show a download button
+            const btn = document.createElement("button");
+            btn.textContent = "Download PDF";
+            btn.addEventListener("click", () => {
+                // Use the filename to make the PDF name unique
+                const pdfName = fileObj.filename.replace(/\.[^/.]+$/, "") + "_grade.pdf";
+                fileObj.grade.save(pdfName);
+            });
+            gradeTd.appendChild(btn);
+        } else {
+            // Otherwise show placeholder text
+            gradeTd.textContent = "Pending";
+        }
+
+        tr.appendChild(gradeTd);
+
+        tableBody.appendChild(tr);
+    });
+}
+
+async function gradeAssignments() {
     const zipFile = zipInput.files[0];
     if (!zipFile) {
         alert("Please upload a .zip file of student submissions.");
@@ -41,15 +131,28 @@ form.addEventListener('submit', async (e) => {
         const zipData = await zipFile.arrayBuffer();
         const zip = await JSZip.loadAsync(zipData);
 
+        const filesWithGrades = [];
+
         // Iterate through files in the zip
-        zip.forEach(async (relativePath, file) => {
+        await Promise.all(Object.keys(zip.files).map(async (relativePath) => {
             if (relativePath.toLowerCase().endsWith(".txt")) {
-                const content = await file.async("string");
-                gradeAssignment(content);
+                try {
+                    const content = await zip.files[relativePath].async("string");
+                    filesWithGrades.push({
+                        filename: relativePath,
+                        grade: gradeIndividualAssignment(content) // your grading function
+                    });
+                } catch (err) {
+                    console.error("Error reading file:", relativePath, err);
+                }
             }
-        });
+        }));
+
+        // Display results
+        displayGrades(filesWithGrades);
+
     } catch (err) {
         console.error("Error processing ZIP file:", err);
         alert("Failed to process ZIP file: " + err.message);
     }
-});
+}

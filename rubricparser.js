@@ -89,7 +89,6 @@ function getRubricCategories(csvData) {
     return values.join(', ');
 }
 
-
 form.addEventListener('submit', (e) => {
     e.preventDefault();
     const zip = zipInput.files[0];
@@ -116,9 +115,9 @@ form.addEventListener('submit', (e) => {
             displayTable(csvData);
             writeRubricToGlobal(csvData);
 
-            console.log('ZIP file:', zip);
-            console.log('CSV file:', csv);
-            console.log('CSV Data:', csvData);
+            // Unhide the Grade button
+            const gradeBtn = document.getElementById("gradeBtn");
+            gradeBtn.style.display = "inline-block";
         } catch (error) {
             alert('Error parsing CSV file: ' + error.message);
             console.error(error);
@@ -133,4 +132,8 @@ form.addEventListener('submit', (e) => {
 resetBtn.addEventListener('click', () => {
     form.reset();
     tableContainer.classList.remove('show');
+});
+
+gradeBtn.addEventListener('click', () => {
+    gradeAssignments();
 });
