@@ -96,30 +96,24 @@ async function gradeSubmission(textContent) {
   const llmPrompt = createLLMPrompt(className, textContent);
 
   try {
-    // Call Hugging Face Inference API directly
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/mistralai/Mistral-7B-Instruct-v0.2",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HF_ACCESS_TOKEN}`, // must be set in env
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ inputs: llmPrompt }), // Hugging Face expects { inputs: "..." }
-      }
-    );
-
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || `HTTP Error: ${response.status}`);
-    }
+    // Call your Netlify function (not Hugging Face directly)
+    const response = await fetch("/.netlify/functions/callLLM", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt: llmPrompt })
+    });
 
     const data = await response.json();
 
-    // Hugging Face returns an array with generated_text
-    const LLMresponse = data[0]?.generated_text || "";
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP Error: ${response.status}`);
+    }
 
-    // Create PDF from the model output
+    const LLMresponse = data.text || "";
+
+    // Generate PDF from the model output
     const pdfDoc = createGradePDF(LLMresponse);
     return pdfDoc;
   } catch (error) {
@@ -128,6 +122,7 @@ async function gradeSubmission(textContent) {
     return null;
   }
 }
+
 
 
 function displayGrades(filesWithGrades) {
