@@ -71,17 +71,19 @@ function createGradePDF(content) {
     return doc;
 }
 
-function gradeIndividualAssignment(textContent) {
-    // Step 1: create LLM Prompt
-    const className = document.getElementById('className').value.trim();
-    var llmPrompt = createLLMPrompt(className, textContent);
-    
-    // Step 2: Call LLM API here with llmPrompt and handle the response
-    var dummyGrade = "Category 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident\nCategory 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident";
+async function gradeSubmission(textContent) {
+  const className = document.getElementById('className').value.trim();
+  const llmPrompt = createLLMPrompt(className, textContent);
 
-
-    // Step 3: create file based on response of LLM API
-    return createGradePDF(dummyGrade);
+  try {
+    const LLMresponse = await callLLM(llmPrompt);   // await the Promise
+    const pdfDoc = createGradePDF(LLMresponse);
+    return pdfDoc;                                  // resolves to jsPDF object
+  } catch (error) {
+    console.error("Failed (gradeSubmission):", error.message);
+    alert("Error: " + error.message);
+    return null;
+  }
 }
 
 function displayGrades(filesWithGrades) {
@@ -142,9 +144,13 @@ async function gradeAssignments() {
             if (relativePath.toLowerCase().endsWith(".txt")) {
                 try {
                     const content = await zip.files[relativePath].async("string");
+
+                    // gradeSubmissions returns a Promise, so await it
+                    const gradeResult = await gradeSubmission(content);
+
                     filesWithGrades.push({
                         filename: relativePath,
-                        grade: gradeIndividualAssignment(content) // your grading function
+                        grade: gradeResult   // now this is the resolved value
                     });
                 } catch (err) {
                     console.error("Error reading file:", relativePath, err);
