@@ -1,4 +1,4 @@
-const HF_API_URL = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2';
+const HF_API_URL = 'https://router.huggingface.co/hf-inference/mistralai/Mistral-7B-Instruct-v0.2';
 const HF_TOKEN = process.env.HF_ACCESS_TOKEN;
 
 exports.handler = async (event) => {
