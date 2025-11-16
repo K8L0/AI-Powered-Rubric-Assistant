@@ -1,3 +1,15 @@
+.left-pane {
+    position: relative;        /* ensures child sizing is relative */
+    overflow: hidden;          /* prevents spillover */
+}
+
+.table-container {
+    max-width: 100%;           /* don’t exceed parent width */
+    overflow-x: auto;          /* horizontal scroll if too wide */
+    overflow-y: hidden;        /* optional: no vertical scroll */
+    -webkit-overflow-scrolling: touch; /* smooth scrolling on mobile */
+}
+
 body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     margin: 2rem;
@@ -139,6 +151,35 @@ table tbody tr:hover {
     padding: 0.35rem 0.5rem;
     border: 1px solid #e6e6e6;
     border-radius: 4px;
+}
+
+/* Fixed widths for the leading spacer and the extension label column */
+table th.spacer,
+table td.leading {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+}
+
+.extension-label {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+    font-weight: 700;
+    padding-right: 0.75rem;
+}
+
+/* Extension rows sit inside the same table but have invisible borders/backgrounds */
+tr.extension-row td {
+    border: none !important;
+    background: transparent !important;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+/* Keep the visible borders for normal data rows */
+tr:not(.extension-row) td {
+    border: 1px solid #e0e0e0;
 }
 
 .container {

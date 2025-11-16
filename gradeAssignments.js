@@ -98,7 +98,7 @@ function gradeSubmission(textContent) {
     var llmPrompt = createLLMPrompt(className, textContent);
 
     // Step 2: Call LLM API here with llmPrompt and handle the response
-    var dummyGrade = "Category 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident\nCategory 1: (5) good; \"\"\"The submission demonstrates strong historical knowledge and clear analysis. For instance, the student notes that 'Lorem Ipsum is not simply random text' and correctly identifies its origin in Cicero’s 'de Finibus Bonorum et Malorum.' These details show accurate recall and contextualization.\"\"\"; very confident";
+    var dummyGrade = "Category 2: (4) ok; \"\"\"The submission provides a reasonable overview of the philosophical context, referencing key thinkers like Aristotle and Kant. However, the analysis lacks depth and misses opportunities to connect ideas to the prompt. The student demonstrates partial understanding.\"\"\"; moderately confident\nCategory 4: (2) poor; \"\"\"The student attempts to discuss the linguistic structure of the passage but misinterprets several key terms. Their explanation of 'dolor sit amet' is inaccurate and lacks citation. The response shows limited engagement with the material.\"\"\"; unsure; The rubric definition of \"poor\" includes factual errors, which are present here.\nCategory 1: (3) ok; \"\"\"The submission touches on historical context but remains vague. The student mentions Cicero but does not elaborate on his influence or relevance. The analysis is surface-level but not incorrect.\"\"\"; somewhat confident\nCategory 5: (5) excellent; \"\"\"The student offers a nuanced critique of the rhetorical devices used in the passage. Their breakdown of parallelism and metaphor is insightful and well-supported. The response exceeds expectations for clarity and precision.\"\"\"; very confident\nCategory 2: (1) bad; \"\"\"The submission fails to engage with the philosophical argument. The student paraphrases the prompt without adding original thought or interpretation. No references or examples are provided.\"\"\"; confident; The rubric clearly defines \"bad\" as lacking analysis, which applies here.\n";
 
 
     // Step 3: create file based on response of LLM API
@@ -162,15 +162,43 @@ function displayGrades(filesWithGrades) {
                 fileObj.grade.save(pdfName);
             });
             gradeTd.appendChild(btn);
+
+            // Add text "A+" next to the button
+            const gradeLabel = document.createElement("span");
+            gradeLabel.textContent = " A+"; // leading space for separation
+            gradeLabel.style.marginLeft = "0.5rem"; // optional spacing
+            gradeTd.appendChild(gradeLabel);
         } else {
             // Otherwise show placeholder text
             gradeTd.textContent = "Pending";
         }
 
         tr.appendChild(gradeTd);
-
         tableBody.appendChild(tr);
     });
+
+    // Add "Download Grading Report" button below the table
+    const rightPane = document.querySelector('.right-pane');
+
+    // Create button
+    const btn = document.createElement('button');
+    btn.textContent = "Download Grading Report";
+    btn.style.display = "block";       // block so we can center
+    btn.style.margin = "1rem auto";    // auto margins center it
+    btn.style.padding = "0.5rem 1rem";
+    btn.style.fontSize = "1rem";
+
+    // Add click handler
+    btn.addEventListener("click", () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text("this is a grading report", 20, 30);
+        doc.save("grading_report.pdf");
+    });
+
+    // Append below the table
+    rightPane.appendChild(btn);
+
 }
 
 async function gradeAssignments() {
